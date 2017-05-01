@@ -4,7 +4,7 @@ class Runner(file: clingoFile){
 	val text = file
 
 	def run = {
-		while ()
+		while 
 
 
 

@@ -1,5 +1,6 @@
 import scala.util.parsing.combinator._
 import scala.language.implicitConversions
+mport scala.collection.mutable.HashMap
 
 // program     -->    rule + program    |     rule
 // rule    -->    clause  + ":-"  +  body.
@@ -22,24 +23,131 @@ object ClingoParser extends Regexparsers{
 	override def skipWhitespace = true;
 	override val whiteSpace = "[ \t\r\f]+".r
 
-	def program: Parser[] =
-	def line: Parser[] =
-	def rule: Parser[] =
-	def body: Parser[] =
-	def fact: Parser[] =
-	def const: Parser[] =
-	def clause: Parser[] =
-	def boolean: Parser[] =
-	def comparison: Parser[] =
-	def predicate: Parser[] =
-	def arglist: Parser[] =
-	def arg: Parser[] =
-	def relation: Parser[] =
-	def term: Parser[] =
-	def variable: Parser[] =
-	def intset: Parser[] =
+	def stablemodels = new mutable.HashMap[String, String]
 
 
+	def program: Parser[ProgClass] =
+		(line ~ program) | line ^^ { 
+			case l ~ p => new ProgClass(l, p)
+			case l ~ None => new ProgClass(l, none)
+		}
+	def line: Parser[LineClass] =
+		rule | fact | const ^^ {
+			p match{
+				case r: RuleClass => LineClass(p) //LineClass(arg: Any)
+				case f: FactClass => LineClass(f)
+				case c: ConstClass => LineClass(c)
+			}
+		}
+	def rule: Parser[RuleClass] =
+		(clause <~ ":-") ~ body ^^ {
+				case None ~ b => new RuleClass(None, b) //if none check constraint in RuleClass
+				case c ~ b => new RuleClass(c, b)
+		}
+	def body: Parser[BodyClass] =
+		(clause ~ "," ~ body) | (clause ~ ".") ^^ {
+			c ~ str ~ b => 
+				str match{
+					case "," => new BodyClass(str, c, b)
+					case "." => new BodyClass(str, c, None)
+				}
+
+		}
+	def fact: Parser[FactClass] =
+		(term <~ "(") ~ (arg <~ ")")  ^^ {
+			t ~ a =>
+				a match{
+					case _a: VarClass => throw new 
+					RuntimeException("Unsafe arg of type VarClass: "+ a)
+					case _ => FactClass(t, a) //make sure that t and a are places
+											 // in stablemodels inside the class
+				}
+		}
+
+	def const: Parser[Int] =
+		("#const " ~> term) ~ ("=" ~> integer) <~ "." ^^ {
+
+		}
+	def clause: Parser[ClauseClass] =
+		predicate | comparison | boolean ^^ {
+			c match{
+				case p: PredClass => 
+					new ClauseClass(p)
+				case c: CompClass =>
+					new ClauseClass(c)
+				case b: Boolean =>
+					new ClauseClass(b)
+			}
+
+		}
+	def boolean: Parser[Boolean] =
+		"#true" | "#false" ^^ {
+			b match{
+				case "#true" => true
+				case "#false" => false
+			}
+		}
+	def comparison: Parser[Boolean] =
+		arg ~ (">=" | "<=" | "<" | ">" | "=" | "!=") ~ arg ^^ {
+			a1 ~ r ~ a2 =>
+				r match{
+					case ">=" => (a1: Int && a2:Int && a1 >= a2)
+					//more cases to follow..
+				}
+
+		}
+	def predicate: Parser[PredClass] =
+		("""[a-z]""".r <~ "(") ~ (arglist <~ ")") ^^ {
+			_name ~ _arglist =>
+				new PredClass(_name, _arglist)
+		}
+	def arglist: Parser[ArgListClass] =
+		((arg ~ str) ~ arglist) ^^ {
+			a ~ s ~ alist =>
+				s match {
+					case "," => new ArgListClass(s, a, alist)
+					case ";" => new ArgListClass(s, a, alist)
+					case None => new ArgListClass(None, a, None)
+				}
+
+		}
+	def arg: Parser[ArgClass] =
+		const | variable | integer | term | intset ^^ {
+			a match{
+				case c: ConstClass =>
+					new ArgClass(c) //Class ArgClass(arg: ArgClass) -arg classes extend ArgClass
+				case v: VarClass =>
+					new ArgClass(v)
+				case i: Int =>
+					new ArgClass(i)
+				case t: TermClass =>
+					new ArgClass(t)
+				case a: Array[Int] =>
+					new ArgClass(a)
+				case _ => println("Oops no class match")
+			}
+
+		}
+	// def relation: Parser[String] =
+	// 	">=" | "<=" | "<" | ">" | "=" | "!=" ^^ {
+
+	// 	}
+	def term: Parser[TermClass] =
+		"""[a-z]""".r ^^ {
+
+		}
+	def variable: Parser[VarClass] =
+		"""([A-Z]+) ([A-Za-z]*)""".r ^^ {
+
+		}
+	def intset: Parser[Array[Int]] =
+		((integer <~ "..") ~ integer) ^^ {
+
+		}
+	def integer: Parser[Int] =
+		"""([0-9]+)""".r ^^ {
+			_.toInt
+		}
 }
 
 

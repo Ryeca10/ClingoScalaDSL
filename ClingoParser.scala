@@ -134,7 +134,6 @@ object ClingoParser extends Regexparsers{
 	// 	}
 	def term: Parser[TermClass] =
 		"""[a-z]""".r ^^ {
-
 		}
 	def variable: Parser[VarClass] =
 		"""([A-Z]+) ([A-Za-z]*)""".r ^^ {
@@ -148,6 +147,12 @@ object ClingoParser extends Regexparsers{
 		"""([0-9]+)""".r ^^ {
 			_.toInt
 		}
+
+
+
+
+
+
 }
 
 

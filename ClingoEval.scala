@@ -3,7 +3,7 @@ import scala.io.Source
 
 
 
-object Eval {
+object ClingoEval {
 	var inside: Option[Level] = None 
 	class Level{outterLevel: Option[Level]} {
 		var outside: Option[Level] = outterLevel
@@ -64,8 +64,50 @@ object Eval {
 			}
 		}
 
+	}
+
+	abstract sealed class Predicate
+	case class ClingoStr(predVal: String) extends Predicate
+	//not sure if we need none yet
+	case class ClingoNone() extends Predicate
+
+	abstract sealed class Statement
+	case class StateDecl() extends Statement
+	case class StateAssign() extends Statement
+	case class StateShow() extends Statement
+
+	def evalProgram(prog: Program): Any = {
 
 	}
+
+	def evalBody(prog: Program): Predicate = {
+
+	}
+
+	//decl and call may be one single one
+	def evalRuleDecl(ruleDecl: Rule): ClingoNone = {
+
+	}
+
+	def evalRuleCall(ruleCall: RuleCall): Predicate = {
+
+	}
+
+	def evalArgSeq(argSeq: List[Argument]): Predicate = {
+
+	}
+
+	//may need one for facts too
+	def evalPredDecl(predDecl: Pred): ClingoNone = {
+
+	}
+
+	def evalPredDecl
+
+
+
+
+
 
 
 

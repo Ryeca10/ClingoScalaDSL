@@ -1,1 +1,8 @@
-q(1).
+#const n = 3.
+q(df).
+p(yu,yuj).
+a(vb,r,xz).
+
+l(A).
+
+a(n,e) :- p(jk), q(q,w,e).

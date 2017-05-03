@@ -1,7 +1,10 @@
-import scala.util.parsig.combinator._
+import scala.util.parsing.combinator._
 import scala.language.implicitConversions
 import scala.collection.mutable.HashMap
 import Helper._
+import scala.collection.mutable.ListBuffer
+
+
 
 // program     -->    rule + program    |     rule
 // rule    -->    clause  + ":-"  +  body.
@@ -19,29 +22,29 @@ import Helper._
 // variable  -->    first letter caps
 
 
-object ClingoParser extends Regexparsers
+object ClingoParser extends RegexParsers
 {
 	//whitespace info as demostrated by Loc's Chefparser
 	override def skipWhitespace = true;
-	override val whiteSpace = "[ \t\r\f]+".r
+	//override val whiteSpace = "[ \t\r\f]+".r
 
-	def stablemodels = new mutable.HashMap[String, String]
-	
+	var stablemodels = new HashMap[String, ListBuffer[ArgClass]]
 
-	def program: Parser[Boolean] = (line ~ program)  ^^ 
+	def program: Parser[Boolean] = (line ~ program.?)  ^^ 
 	{ 
-			case l ~ p => true
-			case l ~ None => true
+
+			case l ~ p => {println("in program"); true}
 			case _ => throw new RuntimeException(" Broken program. ");
 			true
 	}
 
-	def line: Parser[Boolean] = rule | fact | const ^^ 
+	def line: Parser[Boolean] = (rule | fact | const) ^^ 
 	{
+			case p =>
 			p match{
-				case r: RuleClass => true 
-				case f: Boolean => true
-				case c: ConstClass => true
+				case r: RuleClass => {println("in line"); true}
+				case c: ConstClass => {println("in line"); true}
+				case f: Boolean => {println("in line"); true}
 				case _ => throw new RuntimeException(" Broken line of code. ")
 			}
 			true
@@ -49,24 +52,24 @@ object ClingoParser extends Regexparsers
 
 	def rule: Parser[RuleClass] = (clause <~ ":-") ~ body ^^ 
 	{
-				case None ~ b => new RuleClass(None, b) //if none check constraint in RuleClass
-				case c ~ b => new RuleClass(c, b)
+				case c ~ b => {println("in rule"); new RuleClass(c, b)}
 	}
 
-	def listOfClauses = new List()
 	def body: Parser[List[ClauseClass]] = (clause ~ (","|".") ~ body) ^^ 
 	{
-		c ~ str ~ b => 
+		case c ~ str ~ b => 
 
-		if (str == ",")
-		{
-			 listOfClauses = (listOfClauses + c + b)
-		}
-		else if ( c != null) 
-		{
-			listOfClauses = (listOfClauses + c)
-		}
-		listOfClauses;
+			var listOfClauses = new ListBuffer[ClauseClass]()
+			if (str == ",")
+			{
+				 listOfClauses += c
+				 listOfClauses.insertAll(listOfClauses.size -1, b)
+			}
+			else if ( c != null) 
+			{
+				listOfClauses += c
+			}
+			listOfClauses.toList;
 
 
 
@@ -74,37 +77,51 @@ object ClingoParser extends Regexparsers
 
 	def fact: Parser[Boolean] = (term <~ "(") ~ (arglist <~ ").")   ^^ 
 	{
-		t ~ alist =>
-	
-		alist.foreach
-		{	
-			
-			_: VarClass => throw new RuntimeException("Unsafe arg of type VarClass: "+ a)
-		}
-		
-		alist.foreach
+		case t ~ alist =>
 		{
-			stablemodels(t.toString, _.toString)
-		}
+			//println("in fact")
+	
+			
+			for (i <- 0 to alist.size-1)
+			{
+				//println("in second loop")
+				//stablemodels(t.toString) = alist(i).toString
+				var listtemp =  new ListBuffer[ArgClass]()
+				if (stablemodels.contains(t.toTermStr())) 
+				{	listtemp.insertAll( 0, stablemodels(t.toTermStr()))
+					//println("inserted initially")
+					listtemp.insertAll(listtemp.size - 1, alist)
+					//println("inseted alist")
+					stablemodels(t.toTermStr()) = listtemp
+
+				}
+				else
+				{
 		
+					listtemp.insertAll(0, alist)
+					stablemodels += (t.toTermStr() -> listtemp)
+				}
+	
+			}
 		true;
+		}
 		
 	}
 
 	def const: Parser[ConstClass] = ("#const " ~> term) ~ ("=" ~> integer) <~ "." ^^ 
 	{
-		t ~ i =>
-		ConstClass(t,i)
+		case t ~ i => {println("in const"); new ConstClass(t,i)}
 	}
 
-	def clause: Parser[ClauseClass] = predicate | comparison | boolean ^^ 
+	def clause: Parser[ClauseClass] = (predicate | comparison | boolean) ^^ 
 	{
 		c =>
- 		ClauseClass(c)
+ 		new ClauseClass(c)
 	}
 
-	def boolean: Parser[Boolean] = "#true" | "#false" ^^ 
+	def boolean: Parser[Boolean] = ("#true" | "#false") ^^ 
 	{
+			case b =>
 			b match
 			{
 				case "#true" => true
@@ -114,50 +131,63 @@ object ClingoParser extends Regexparsers
 
 	def comparison: Parser[Boolean] = arg ~ (">=" | "<=" | "<" | ">" | "=" | "!=") ~ arg ^^ 
 	{
-			a1 ~ r ~ a2 =>
+			case a1 ~ r ~ a2 =>
 
 			r match
 			{
-				case ">=" => (a1: Int && a2:Int && a1 >= a2)
+				case ">=" => ((a1.isInt()) && (a2.isInt()) && (a1.toInt >= a2.toInt))
 				//more cases to follow..
 			}
 
 	}
 
 	
-	def listOfArgs = new List()
 	def predicate: Parser[PredClass] = ("""[a-z]""".r <~ "(") ~ ( (arglist) <~ ")") ^^ 
 	{
-			_name ~ _arglist =>
-			listOfArgs = new List()
-			PredClass(_name, _arglist)
+			case _name ~ _arglist =>
+			new PredClass(_name, _arglist)
 	}
 
-	def arglist: Parser[List[ArgClass]] = (arg ~ ( "," | None) ~ arglist) ^^ 
+	def arglist: Parser[List[ArgClass]] = (arg ~ (",".?) ~ arglist.?) ^^ 
 	{
-		a ~ s ~ alist =>
-
-		if (s != null)
+		case a ~ None ~ None => 
 		{
-			 listOfArgs = (listOfArgs + a + alist)
+			var listOfArgs = new ListBuffer[ArgClass]()
+			listOfArgs += a
+			listOfArgs.toList;
 		}
 
-		else if (a != null)
+		case a ~ s ~ alist =>
 		{
-			listOfArgs = (listOfArgs + a)
-		}
-		else
-		{
-			 throw new RuntimeException(" Empty list in arglistOR.")
-		}
+			var listOfArgs = new ListBuffer[ArgClass]()
+			if (s != null)
+			{
+				 listOfArgs += a
+				 listOfArgs.insertAll( listOfArgs.size -1, alist.get)
+		
+			
+			}
 
-		listOfArgs;
+			else if (a != null)
+			{
+				listOfArgs += a
+			}
+
+			listOfArgs.toList;
+		}
 	}
 
-	def arg: Parser[ArgClass] = const | variable | integer | term | intset ^^ 
+	def arg: Parser[ArgClass] = (const | variable | integer | term | intset) ^^ 
 	{
-		x => 
-		ArgClass(x)
+		case a => 
+		a match 
+		{
+			case c:ConstClass => new ArgClass(c)
+			case v:VarClass => new ArgClass(v)
+			case i:Int => new ArgClass(i)
+			case t:TermClass => new ArgClass(t)
+			case intarr:Array[Int] => new ArgClass(intarr)
+		}
 
 	}
 
@@ -165,7 +195,7 @@ object ClingoParser extends Regexparsers
 	{
 		x =>
 		var str = x.toString
-		TermClass(str)
+		new TermClass(str)
 			
 	}
 
@@ -173,18 +203,18 @@ object ClingoParser extends Regexparsers
 	{
 		x =>
 		var str = x.toString
-		VarClass(str)
+		new VarClass(str)
 	}
 
 	def intset: Parser[Array[Int]] = ((integer <~ "..") ~ integer) ^^ 
 	{
-		a ~ b =>
+		case a ~ b =>
 		var intArray = new Array[Int](b-a+1)
-		Int count = 0
+		var count = 0
 
 		for( i <- a to b)
 		{
-			intArray[count] = i
+			intArray(count) = i
 			count = count + 1
 		}
 
@@ -192,7 +222,7 @@ object ClingoParser extends Regexparsers
 
 	}
 
-	def integer: Parser[Int] = """([0-9]+)""".r ^^ 
+	def integer: Parser[Int] = "[0-9]+".r ^^ 
 	{
 		_.toInt
 	}
@@ -271,4 +301,24 @@ object ClingoParser extends Regexparsers
 	// 	">=" | "<=" | "<" | ">" | "=" | "!=" ^^ {
 
 	// 	}
+
+/******************************
+
+
+
+//case a ~ None ~ None => 
+//{
+	//var listOfArgs = new ListBuffer[ArgClass]()
+	//listOfArgs += a
+	//listOfArgs.toList;
+//}
+
+for (i <- 0 to alist.size-1)
+			{	
+				alist(i) match 
+				{
+					case a:VarClass => throw new RuntimeException("Unsafe arg of type VarClass: " + alist(i).toString )
+				}
+			}
+************************************/
 

@@ -5,27 +5,52 @@ object Helper
 	// 3 rule class
 	class RuleClass(var clause:ClauseClass , var body:List[ClauseClass])
 	{
+
 	}
 
 	// 6 clause class
 	class ClauseClass(var x:Any)
 	{
-		
+        def toStr =
+        {
+            x match
+            {
+                case t:TermClass => t.asInstanceOf[TermClass].toTermStr()
+                case v:VarClass => v.asInstanceOf[VarClass].toVarStr()
+                case c:ConstClass => c.asInstanceOf[ConstClass].toConstStr()
+                case i:Int => i.toString
+                case s:String => s
+            }
+        }
 	}
 	// 7 predicate class
-	class PredClass(var name:String, var arglist:List[ArgClass]) 
+	class PredClass(var name:String, var arglist:List[ArgClass])
 	{
-		def toPredStr = name
+		def toPredStr =
+        {
+                var predString = name + "("
+
+                arglist.foreach
+                {
+                    case arg =>
+                    {
+                        predString = predString.concat(arg.toStr + ",")
+                    }
+                }
+                predString = predString.dropRight(1)
+                predString = predString.concat(")")
+                println(predString)
+        }
 	}
 
 	// 9 arg class
 	class ArgClass(x:Any)
 	{
-		def isInt() = { true } 
+		def isInt() = { true }
 		def toInt() = {1}
-		def toStr = 
+		def toStr =
 		{
-			x match 
+			x match
 			{
 				case t:TermClass => t.asInstanceOf[TermClass].toTermStr()
 				case v:VarClass => v.asInstanceOf[VarClass].toVarStr()

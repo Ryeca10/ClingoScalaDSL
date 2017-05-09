@@ -4,7 +4,5 @@ qi(1).
 qo(13).
 p(yu,yuj).
 a(vb,r,xz).
-
-l(A).
-
 a(n,e) :- p(jk), q(q,w,e).
+a(X,e) :- p(X), q(q,w,e).

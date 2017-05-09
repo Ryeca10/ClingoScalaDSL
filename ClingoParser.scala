@@ -33,7 +33,7 @@ object ClingoParser extends RegexParsers
 
     def program: Parser[Boolean] = (line ~ program.?)  ^^
     {
-        case l ~ p => { true}
+        case l ~ p => {true}
         case _ => throw new RuntimeException(" Broken program. ");
         true
     }
@@ -51,27 +51,28 @@ object ClingoParser extends RegexParsers
         true
     }
 
-    def rule: Parser[RuleClass] = (clause <~ ":-") ~ body ^^
+    def rule: Parser[RuleClass] = (clause <~ ":-") ~ (body <~ ".") ^^
     {
-        case c ~ b => {println("in rule"); new RuleClass(c, b)}
+        case c ~ b => new RuleClass(c, b)
     }
 
-    def body: Parser[List[ClauseClass]] = (clause ~ (","|".") ~ body) ^^
+    def body: Parser[List[ClauseClass]] = (clause ~ (",".?) ~ body.?) ^^
     {
+        case c ~ None ~ None =>
+        {
+            var listOfClauses = new ListBuffer[ClauseClass]()
+            listOfClauses += c
+            listOfClauses.toList;
+        }
+
         case c ~ str ~ b =>
         {
-            println("in body");
             var listOfClauses = new ListBuffer[ClauseClass]()
-            if (str == ",")
+            if (str != null)
             {
                 listOfClauses += c
-                listOfClauses.insertAll(listOfClauses.size -1, b)
+                listOfClauses.insertAll( listOfClauses.size -1, b.get)
             }
-            else if ( c != null)
-            {
-                listOfClauses += c
-            }
-
             listOfClauses.toList;
         }
     }
@@ -80,9 +81,6 @@ object ClingoParser extends RegexParsers
     {
         case t ~ alist =>
         {
-            //println("in fact")
-
-
             for (i <- 0 to alist.size-1)
             {
                 var listtemp =  new ListBuffer[ArgClass]()
@@ -130,8 +128,7 @@ object ClingoParser extends RegexParsers
 
     def predicate: Parser[PredClass] = ("""([a-z]+)""".r <~ "(") ~ ( (arglist) <~ ")") ^^
     {
-        case _name ~ _arglist =>
-        new PredClass(_name, _arglist)
+        case _name ~ _arglist => new PredClass(_name, _arglist)
     }
 
     def arglist: Parser[List[ArgClass]] = (arg ~ (",".?) ~ arglist.?) ^^
@@ -176,11 +173,9 @@ object ClingoParser extends RegexParsers
         new TermClass(str)
     }
 
-    def variable: Parser[VarClass] = """([A-Z]+) ([A-Za-z]*)""".r ^^
+    def variable: Parser[VarClass] = """([A-Z]+)""".r ^^
     {
-        x =>
-        var str = x.toString
-        new VarClass(str)
+        case x => {println("in variable"); new VarClass(x)}
     }
 
     def intset: Parser[Array[Int]] = ((integer <~ "..") ~ integer) ^^
